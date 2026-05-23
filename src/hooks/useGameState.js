@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ZONE_CONFIGS, TOTAL_ZONES } from '../data/zoneConfigs'
-import { isZoneComplete } from '../data/exercises'
+import { isZoneComplete, ROTATION } from '../data/exercises'
 
-const STORAGE_KEY = 'expedicion_matematica_v1'
+const STORAGE_KEY = `expedicion_matematica_v1_r${ROTATION}`
 
 const INITIAL_STATE = {
   playerName: '',
