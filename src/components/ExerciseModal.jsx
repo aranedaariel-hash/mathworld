@@ -30,6 +30,7 @@ export default function ExerciseModal({ exercise, streak, onAnswer, onClose }) {
 
   function handleSubmit(answer) {
     const isCorrect = answer === exercise.respuesta
+    if (!isCorrect) new Audio('/sounds/wrong.mp3').play().catch(() => {})
     setResult(isCorrect ? 'correct' : 'wrong')
     setAttempts(a => a + 1)
     setEmoji(
