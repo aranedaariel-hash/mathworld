@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useGameState } from './hooks/useGameState'
 import IntroScreen from './components/IntroScreen'
+import CharacterSelect from './components/CharacterSelect'
 import Map from './components/Map'
 import Game3D from './components/Game3D'
 import HUD from './components/HUD'
@@ -14,22 +15,18 @@ export default function App() {
   const gs = useGameState()
   const [activeExercise, setActiveExercise] = useState(null)
 
-  // Called by Game3D when player interacts with NPC index `npcIdx`
   const handleInteract = useCallback((zoneId, npcIdx) => {
     const exId = `z${zoneId}_e${npcIdx + 1}`
-    if (gs.completedExercises[exId]) return  // already done
+    if (gs.completedExercises[exId]) return
     const ex = exercises.find(e => e.id === exId)
     if (ex) setActiveExercise(ex)
   }, [gs.completedExercises])
 
-  // Called by ExerciseModal on every answer attempt
   const handleAnswer = useCallback((_answer, isCorrect) => {
     if (!activeExercise) return
     gs.submitAnswer(activeExercise, isCorrect)
-
     if (isCorrect) {
       gs.spawnParticles(8)
-      // Build updated map for zone-completion check
       const updatedMap = { ...gs.completedExercises, [activeExercise.id]: true }
       gs.checkZoneCompletion(gs.currentZone, updatedMap)
     }
@@ -44,28 +41,38 @@ export default function App() {
   return (
     <div className="w-screen h-screen overflow-hidden relative">
 
-      {/* ── Floating particles ─────────────────────────────────────────────── */}
+      {/* Particles */}
       {gs.particles.map(p => (
-        <div
-          key={p.id}
-          className="particle select-none"
+        <div key={p.id} className="particle select-none"
           style={{
-            left: `${p.x}%`,
-            top: '-30px',
+            left: `${p.x}%`, top: '-30px',
             animationDuration: `${p.duration}s`,
             animationDelay: `${p.delay}s`,
             fontSize: 28,
-          }}
-        >
+          }}>
           {p.emoji}
         </div>
       ))}
 
-      {/* ── Screens ────────────────────────────────────────────────────────── */}
+      {/* Intro */}
       {gs.screen === 'intro' && (
         <IntroScreen onStart={gs.setPlayerName} />
       )}
 
+      {/* Selección de personaje */}
+      {gs.screen === 'character' && (
+        <CharacterSelect
+          playerName={gs.playerName}
+          selected={gs.selectedCharacter}
+          onSelect={gs.setCharacter}
+          selectedPet={gs.selectedPet}
+          onSelectPet={gs.setPet}
+          onConfirm={gs.confirmCharacter}
+          onBack={() => gs.resetGame()}
+        />
+      )}
+
+      {/* Mapa */}
       {gs.screen === 'map' && (
         <Map
           unlockedZones={gs.unlockedZones}
@@ -81,14 +88,16 @@ export default function App() {
         />
       )}
 
+      {/* Juego 3D */}
       {gs.screen === 'game' && (
         <div className="absolute inset-0">
           <Game3D
             zoneId={gs.currentZone}
             completedExercises={gs.completedExercises}
             onInteract={handleInteract}
+            selectedCharacter={gs.selectedCharacter}
+            selectedPet={gs.selectedPet}
           />
-
           <HUD
             xp={gs.xp}
             level={gs.level}
@@ -98,7 +107,6 @@ export default function App() {
             zoneEmoji={zoneCfg?.emoji ?? ''}
             onBack={gs.goToMap}
           />
-
           {activeExercise && (
             <ExerciseModal
               exercise={activeExercise}
@@ -110,6 +118,7 @@ export default function App() {
         </div>
       )}
 
+      {/* Recompensa */}
       {gs.screen === 'reward' && (
         <RewardScreen
           badge={gs.pendingReward?.badge}
@@ -118,6 +127,7 @@ export default function App() {
         />
       )}
 
+      {/* Perfil */}
       {gs.screen === 'profile' && (
         <ProfileScreen
           playerName={gs.playerName}
@@ -134,8 +144,11 @@ export default function App() {
           setSkin={gs.setSkin}
           onBack={gs.goToMap}
           resetGame={gs.resetGame}
+          selectedCharacter={gs.selectedCharacter}
+          onChangeCharacter={gs.goToCharacter}
         />
       )}
+
     </div>
   )
 }

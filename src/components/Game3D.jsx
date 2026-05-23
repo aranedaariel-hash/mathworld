@@ -155,27 +155,42 @@ function animateNPC(npcObj, time, idx, isNear) {
 
 // ─── Player mesh (visible third-person character) ─────────────────────────────
 
-function createPlayerMesh(skinColor, onLoaded) {
+function createPlayerMesh(characterFile, onLoaded) {
   const group = new THREE.Group()
-  const loader = new GLTFLoader()
-  loader.load('/models/character.glb', (gltf) => {
+  const path = characterFile ? `/models/${characterFile}.glb` : '/models/character.glb'
+  new GLTFLoader().load(path, (gltf) => {
     const model = gltf.scene
-    model.scale.set(1, 1, 1)
+    const box = new THREE.Box3().setFromObject(model)
+    const size = box.getSize(new THREE.Vector3())
+    model.scale.setScalar(1.8 / size.y)
     group.add(model)
-    model.traverse((child) => {
-      if (child.isMesh) {
-        child.material.needsUpdate = true
-      }
-    })
     if (onLoaded) onLoaded()
-  })                        // ← cierra el loader.load acá
-  group.position.y = 0.33
+  })
+  group.position.y = 0.05
   group.userData.leftArm  = null
   group.userData.rightArm = null
   group.userData.leftLeg  = null
   group.userData.rightLeg = null
   return group
-}                           // ← cierra la función acá
+}
+
+function createPetMesh(petFile) {
+  if (!petFile) return null
+  const group = new THREE.Group()
+  new GLTFLoader().load(`/models/pets/${petFile}.glb`, (gltf) => {
+    const model = gltf.scene
+    const box = new THREE.Box3().setFromObject(model)
+    const size = box.getSize(new THREE.Vector3())
+    const center = box.getCenter(new THREE.Vector3())
+    const s = 0.6 / size.y
+    model.scale.setScalar(s)
+    model.position.x = -center.x * s
+    model.position.z = -center.z * s
+    group.add(model)
+  })
+  group.position.y = 0.05
+  return group
+}
 
 function animatePlayerMesh(playerMesh, isMoving, time) {
   if (!playerMesh) return
@@ -523,7 +538,7 @@ const CAM_HEIGHT = 3    // vertical offset above player
 const CAM_MIN_PITCH = -0.25  // look-down limit
 const CAM_MAX_PITCH =  0.8   // look-up limit
 
-export default function Game3D({ zoneId, completedExercises, onInteract, playerSkinColor }) {
+export default function Game3D({ zoneId, completedExercises, onInteract, selectedCharacter, selectedPet }) {
   const mountRef      = useRef(null)
   const threeRef      = useRef({})
   const inputRef      = useRef({
@@ -605,12 +620,15 @@ export default function Game3D({ zoneId, completedExercises, onInteract, playerS
       if (cancelled) { disposeAndRemove(scene, renderer, mount); return }
 
       // Create player mesh (third-person visible character)
-      const playerMesh = createPlayerMesh(playerSkinColor)
+      const playerMesh = createPlayerMesh(selectedCharacter)
       playerMesh.position.set(inputRef.current.playerX, 0, inputRef.current.playerZ)
       scene.add(playerMesh)
 
+      const petMesh = createPetMesh(selectedPet)
+      if (petMesh) scene.add(petMesh)
+
       setIsLoading(false)
-      threeRef.current = { renderer, scene, camera, npcs, playerMesh }
+      threeRef.current = { renderer, scene, camera, npcs, playerMesh, petMesh }
 
       scheduleAdjacentPreload(zoneId)
 
@@ -747,6 +765,14 @@ export default function Game3D({ zoneId, completedExercises, onInteract, playerS
         // Update player mesh world position
         playerMesh.position.x = inp.playerX
         playerMesh.position.z = inp.playerZ
+
+        // Pet follows player, offset to camera side so it stays visible
+        if (petMesh) {
+          const sinY = Math.sin(inp.yaw), cosY = Math.cos(inp.yaw)
+          petMesh.position.x = inp.playerX + sinY * 0.9 + cosY * 0.5
+          petMesh.position.z = inp.playerZ + cosY * 0.9 - sinY * 0.5
+          if (isMoving) petMesh.rotation.y = playerMesh.rotation.y
+        }
 
         // Animate limbs
         animatePlayerMesh(playerMesh, isMoving, time)

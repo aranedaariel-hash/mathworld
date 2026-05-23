@@ -18,6 +18,8 @@ const INITIAL_STATE = {
   totalCorrect: 0,
   totalAttempts: 0,
   skin: { color: '#6C63FF', hat: null, accessory: null },
+  selectedCharacter: 'character-female-a',
+  selectedPet: null,
 }
 
 function loadSave() {
@@ -30,18 +32,29 @@ function loadSave() {
 
 export function useGameState() {
   const [state, setState] = useState(loadSave)
-  const [screen, setScreen] = useState(() => loadSave().playerName ? 'map' : 'intro')
+  const [screen, setScreen] = useState(() => loadSave().playerName ? 'character' : 'intro')
   const [pendingReward, setPendingReward] = useState(null)
   const [particles, setParticles] = useState([])
   const particleId = useRef(0)
 
-  // Persist on every state change
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch {}
   }, [state])
 
   const setPlayerName = useCallback((name) => {
     setState(s => ({ ...s, playerName: name.trim() || 'Explorador' }))
+    setScreen('character')
+  }, [])
+
+  const setCharacter = useCallback((characterFile) => {
+    setState(s => ({ ...s, selectedCharacter: characterFile }))
+  }, [])
+
+  const setPet = useCallback((petFile) => {
+    setState(s => ({ ...s, selectedPet: petFile }))
+  }, [])
+
+  const confirmCharacter = useCallback(() => {
     setScreen('map')
   }, [])
 
@@ -52,6 +65,7 @@ export function useGameState() {
 
   const goToMap = useCallback(() => setScreen('map'), [])
   const goToProfile = useCallback(() => setScreen('profile'), [])
+  const goToCharacter = useCallback(() => setScreen('character'), [])
 
   const spawnParticles = useCallback((count = 6) => {
     const newParticles = Array.from({ length: count }, () => {
@@ -142,9 +156,13 @@ export function useGameState() {
     pendingReward,
     particles,
     setPlayerName,
+    setCharacter,
+    setPet,
+    confirmCharacter,
     enterZone,
     goToMap,
     goToProfile,
+    goToCharacter,
     submitAnswer,
     checkZoneCompletion,
     clearReward,

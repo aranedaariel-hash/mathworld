@@ -1,3 +1,6 @@
+import { useEffect, useRef } from 'react'
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { ZONE_CONFIGS } from '../data/zoneConfigs'
 import { getZoneProgress } from '../data/exercises'
 
@@ -10,10 +13,55 @@ const HATS = [
   { id: 'rocket', emoji: '🚀', name: 'Cohete', cost: 150 },
 ]
 
+function AvatarPreview({ file }) {
+  const mountRef = useRef(null)
+
+  useEffect(() => {
+    const mount = mountRef.current
+    if (!mount) return
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setSize(80, 100)
+    renderer.setClearColor(0x000000, 0)
+    mount.appendChild(renderer.domElement)
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(45, 80 / 100, 0.1, 100)
+    camera.position.set(0, 1.2, 3)
+    camera.lookAt(0, 1, 0)
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5))
+    const dir = new THREE.DirectionalLight(0xffffff, 1)
+    dir.position.set(2, 4, 3)
+    scene.add(dir)
+
+    let afId
+    const loader = new GLTFLoader()
+    loader.load(`/models/${file}.glb`, (gltf) => {
+      const model = gltf.scene
+      scene.add(model)
+      const animate = () => {
+        afId = requestAnimationFrame(animate)
+        model.rotation.y += 0.02
+        renderer.render(scene, camera)
+      }
+      animate()
+    })
+
+    return () => {
+      cancelAnimationFrame(afId)
+      renderer.dispose()
+      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
+    }
+  }, [file])
+
+  return <div ref={mountRef} />
+}
+
 export default function ProfileScreen({
   playerName, xp, level, mathCoins, streak, bestStreak,
   totalCorrect, totalAttempts, earnedBadges, completedExercises,
-  skin, setSkin, onBack, resetGame,
+  skin, setSkin, onBack, resetGame, selectedCharacter, onChangeCharacter,
 }) {
   const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0
   const xpInLevel = xp % 100
@@ -38,18 +86,27 @@ export default function ProfileScreen({
           {/* Avatar + stats */}
           <div className="card p-5 flex items-center gap-5">
             <div
-              className="flex-shrink-0 flex items-center justify-center rounded-2xl text-4xl"
+              className="flex-shrink-0 flex items-center justify-center rounded-2xl overflow-hidden"
               style={{
-                width: 80, height: 80,
-                background: skin.color,
-                boxShadow: `0 0 20px ${skin.color}88`,
+                width: 80, height: 100,
+                background: 'rgba(255,255,255,0.05)',
+                boxShadow: '0 0 20px rgba(108,99,255,0.3)',
+                cursor: 'pointer',
               }}
+              onClick={onChangeCharacter}
+              title="Cambiar personaje"
             >
-              {skin.hat === 'crown' ? '👑' : skin.hat === 'wizard' ? '🧙' : skin.hat === 'rocket' ? '🚀' : skin.hat === 'cap' ? '🧢' : '😊'}
+              <AvatarPreview file={selectedCharacter || 'character-female-a'} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-black text-white" style={{ fontSize: 24 }}>{playerName}</p>
               <p className="text-purple-300" style={{ fontSize: 16 }}>Nivel {level} Explorador</p>
+              <p
+                onClick={onChangeCharacter}
+                style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', marginTop: 2 }}
+              >
+                ✏️ Cambiar personaje
+              </p>
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
                   <div className="h-full rounded-full xp-bar-fill" style={{ width: `${xpInLevel}%`, background: 'linear-gradient(90deg, #6C63FF, #A855F7)' }} />
@@ -180,6 +237,7 @@ export default function ProfileScreen({
           >
             🗑️ Reiniciar progreso
           </button>
+
         </div>
       </div>
     </div>
