@@ -14,7 +14,7 @@
 * { box-sizing: border-box; }
 
 body {
-  font-family: 'Nunito', 'Trebuchet MS', 'Comic Sans MS', cursive, sans-serif;
+  font-family: 'Nunito', 'Trebuchet MS', Arial, sans-serif;
   background: var(--c-bg);
   overflow: hidden;
   height: 100dvh;
